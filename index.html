@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charles' Law</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .pixelated { image-rendering: pixelated; }
+        /* Para que el slider tenga color cálido (termómetro) */
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ef4444;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 font-sans p-2 md:p-3">
+
+    <div class="max-w-6xl mx-auto space-y-3">
+        
+        <!-- Cabecera -->
+        <header class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex items-center gap-3 border-b border-slate-100 pb-2 mb-2">
+                <div class="bg-orange-100 p-2 rounded-lg text-orange-600">
+                    <i data-lucide="expand" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-bold text-slate-900">Charles' Law</h1>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-3 text-[11px] md:text-xs">
+                <div class="bg-slate-100 px-2 py-1 rounded-md font-medium flex items-center gap-1.5"><i data-lucide="lock" class="w-3 h-3 text-slate-400"></i> Pressure (<i>p</i>) = constant</div>
+                <div class="bg-slate-100 px-2 py-1 rounded-md font-medium flex items-center gap-1.5"><i data-lucide="lock" class="w-3 h-3 text-slate-400"></i> Amount of gas (<i>n</i>) = constant</div>
+                <div class="bg-orange-50 text-orange-800 px-2 py-1 rounded-md font-semibold border border-orange-200">
+                    <i>V</i> and <i>T</i> variables
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            
+            <!-- Panel de Simulación y Controles -->
+            <div class="bg-white p-3 md:p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between h-full">
+                
+                <div class="space-y-3">
+                    
+                    <!-- Ventanas Macroscópicas -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="bg-orange-50 p-2 rounded-xl border border-orange-100 text-center col-span-1">
+                            <div class="text-[11px] md:text-xs text-orange-600 font-bold mb-0.5">Temperature (<i>T</i>)</div>
+                            <div class="text-lg md:text-xl font-black text-orange-800"><span id="temp-display">273</span> <span class="text-xs font-medium">K</span></div>
+                            <div class="text-[10px] text-orange-600 font-medium mt-0.5"><span id="temp-c-display">0</span> ºC</div>
+                        </div>
+                        <div class="bg-blue-50 p-2 rounded-xl border border-blue-100 text-center col-span-1 transition-colors">
+                            <div class="text-[11px] md:text-xs text-blue-600 font-bold mb-0.5">Volume (<i>V</i>)</div>
+                            <div class="text-lg md:text-xl font-black text-blue-800"><span id="vol-display">5.0</span> <span class="text-xs font-medium">L</span></div>
+                            <div class="text-[10px] text-blue-600 font-medium mt-0.5 opacity-0">spacer</div>
+                        </div>
+                        <div class="bg-slate-100 p-2 rounded-xl border border-slate-200 text-center col-span-1 opacity-70">
+                            <div class="text-[11px] md:text-xs text-slate-600 font-bold mb-0.5 flex justify-center items-center gap-1">
+                                Pressure (<i>p</i>) <i data-lucide="lock" class="w-3 h-3"></i>
+                            </div>
+                            <div class="text-lg md:text-xl font-black text-slate-600">1.00 <span class="text-xs font-medium">atm</span></div>
+                            <div class="text-[10px] text-slate-500 font-medium mt-0.5">Constant</div>
+                        </div>
+                    </div>
+
+                    <!-- Encabezados del Canvas -->
+                    <div class="flex justify-between items-center pt-1 border-t border-slate-100">
+                        <div class="text-xs md:text-sm font-bold text-slate-600">
+                            Microscopic view
+                        </div>
+                        <div class="bg-red-100 text-red-800 px-2 py-0.5 rounded text-[10px] md:text-[11px] font-bold shadow-sm flex items-center gap-1">
+                            <i data-lucide="lock" class="w-3 h-3"></i> Collisions / (area·time): Constant
+                        </div>
+                    </div>
+
+                    <!-- Lienzo del microscopio (Canvas) -->
+                    <div class="relative w-full h-32 md:h-36 bg-slate-100 rounded-xl overflow-hidden border border-slate-300 flex items-center justify-center">
+                        <canvas id="gasCanvas" width="400" height="160" class="w-full h-full object-contain pixelated"></canvas>
+                    </div>
+
+                    <!-- Control del Deslizador -->
+                    <div>
+                        <label class="block text-[11px] md:text-xs font-bold text-slate-700 mb-1">
+                            Heater / Cooler (Modify Temperature in ºC)
+                        </label>
+                        <input 
+                            type="range" 
+                            id="temp-slider"
+                            min="-273" 
+                            max="273" 
+                            step="1" 
+                            value="0" 
+                            class="w-full h-2.5 bg-gradient-to-r from-blue-500 via-yellow-100 to-red-500 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <div class="flex justify-between text-[10px] md:text-[11px] text-slate-400 mt-1 font-medium">
+                            <span>-273 ºC (Absolute Zero)</span>
+                            <span>273 ºC (Very hot)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2 mt-3">
+                    <!-- Explicación de Charles -->
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-start gap-2">
+                        <i data-lucide="info" class="text-orange-500 mt-0.5 flex-shrink-0 w-4 h-4"></i>
+                        <p class="text-[10px] sm:text-[11px] text-slate-700 leading-relaxed">
+                            As temperature increases, particles move faster and push with more force. To keep the pressure from increasing, the plunger <strong>moves automatically (expanding the volume)</strong> making room for the particles.
+                        </p>
+                    </div>
+
+                    <!-- Explicación de Límite de la Ley -->
+                    <div class="bg-purple-50 p-2.5 rounded-xl border border-purple-200 flex items-start gap-2">
+                        <i data-lucide="lightbulb" class="text-purple-500 mt-0.5 flex-shrink-0 w-4 h-4"></i>
+                        <p class="text-[10px] sm:text-[11px] text-purple-900 leading-relaxed">
+                            <strong>Did you know...?</strong> Mathematically, the volume reaches 0 at Absolute Zero, but in real life this is impossible! Matter occupies physical space. In reality, before reaching that temperature, the gas would condense into a liquid and stop obeying Charles' Law. This is the limit of the "Ideal Gas" model.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de Gráfica, Datos y Ecuaciones -->
+            <div class="bg-white p-3 md:p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between h-full">
+                
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2 font-bold text-[13px] md:text-base text-slate-800 border-b border-slate-100 pb-1.5">
+                        <i data-lucide="bar-chart-3" class="text-emerald-500 w-4 h-4"></i> Graph <i>V</i> vs <i>T</i> (Absolute)
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row gap-3 pt-1 pl-1 md:pl-2 pb-1">
+                        <!-- Contenedor SVG de la Gráfica -->
+                        <div class="w-full md:w-2/3 h-32 md:h-36 relative bg-slate-50 rounded-tr-lg ml-12 md:ml-16 mr-3 md:mr-6 mb-2 mt-4">
+                            <svg viewBox="0 0 100 100" class="w-full h-full overflow-visible" id="graph-svg">
+                                <!-- SVG Content generated via JS -->
+                            </svg>
+                        </div>
+
+                        <!-- Tabla de valores -->
+                        <div class="w-full md:w-1/3 flex flex-col space-y-1.5">
+                            <button id="btn-record" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold py-1 px-2 rounded-lg transition-colors border border-emerald-300 text-[11px] w-full shadow-sm">
+                                + Save point
+                            </button>
+                            
+                            <div class="flex-grow overflow-y-auto border border-slate-200 rounded-lg bg-white h-20 md:h-24">
+                                <table class="w-full text-[10px] md:text-[11px] text-center">
+                                    <thead class="bg-slate-100 sticky top-0">
+                                        <tr>
+                                            <th class="py-1 px-1 border-b border-r border-slate-200"><i>V</i></th>
+                                            <th class="py-1 px-1 border-b border-r border-slate-200"><i>T</i>(K)</th>
+                                            <th class="py-1 px-1 border-b border-slate-200 bg-yellow-50"><i>V/T</i></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="points-table-body">
+                                        <tr><td colSpan="3" class="py-2 text-slate-400">No data</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="clear-btn-container" class="hidden">
+                                <button id="btn-clear" class="text-[10px] text-red-500 hover:underline text-left">
+                                    Clear data
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2 mt-3">
+                    <!-- Alerta Cero Absoluto -->
+                    <div class="bg-red-50 border border-red-200 p-1.5 rounded-xl text-center text-red-900 shadow-sm flex items-center justify-center gap-1.5">
+                        <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-red-500"></i>
+                        <span class="text-[10px] md:text-[11px] font-bold">Linearity warning! Always use absolute T: <i>T(K) = T(ºC) + 273</i></span>
+                    </div>
+
+                    <!-- Ecuación relacional -->
+                    <div class="bg-yellow-50 border border-yellow-200 p-2 md:p-3 rounded-xl text-center text-yellow-900 shadow-sm flex flex-col items-center justify-center gap-2 md:gap-3">
+                        <div class="flex items-center gap-1.5 text-sm md:text-base font-black tracking-wide">
+                            <div class="flex flex-col items-center leading-none">
+                                <span class="border-b-2 border-yellow-900 px-1 mb-0.5"><i>V₁</i></span>
+                                <span><i>T₁</i></span>
+                            </div>
+                            <span>=</span>
+                            <div class="flex flex-col items-center leading-none">
+                                <span class="border-b-2 border-yellow-900 px-1 mb-0.5"><i>V₂</i></span>
+                                <span><i>T₂</i></span>
+                            </div>
+                            <span>=</span>
+                            <div class="flex flex-col items-center leading-none">
+                                <span class="border-b-2 border-yellow-900 px-1 mb-0.5"><i>V₃</i></span>
+                                <span><i>T₃</i></span>
+                            </div>
+                            <span>= ... = const</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm md:text-base font-black tracking-wide">
+                            <div class="flex flex-col items-center leading-none">
+                                <span class="border-b-2 border-yellow-900 px-1 mb-0.5"><i>V</i></span>
+                                <span><i>T</i></span>
+                            </div>
+                            <span>= const</span>
+                        </div>
+                    </div>
+
+                    <!-- Enunciado de la Ley -->
+                    <div class="bg-blue-50 border border-blue-200 p-2 rounded-xl text-blue-900 shadow-sm">
+                        <h3 class="font-bold mb-0.5 text-[11px] md:text-xs">Statement of the Law:</h3>
+                        <p class="text-[10px] md:text-[11px] font-bold italic leading-relaxed">
+                            "At constant pressure, the volume occupied by a fixed mass of gas is directly proportional to its absolute temperature (in Kelvin)."
+                        </p>
+                    </div>
+
+                    <!-- Bloque de Conclusión IA -->
+                    <div id="ai-conclusion-container" class="hidden p-2 bg-indigo-50 border border-indigo-100 rounded-xl">
+                        <div class="flex items-center justify-between mb-1">
+                            <h4 class="font-bold text-indigo-900 flex items-center gap-1.5 text-[11px]">
+                                <i data-lucide="sparkles" class="text-indigo-500 w-3 h-3"></i> AI Teacher Analysis
+                            </h4>
+                            <button id="btn-generate-conclusion" class="text-[10px] bg-indigo-200 hover:bg-indigo-300 text-indigo-800 font-bold py-1 px-2.5 rounded-full transition-colors flex items-center gap-1">
+                                <i data-lucide="sparkles" class="w-3 h-3" id="icon-conclusion"></i>
+                                <span id="text-conclusion-btn">Generate Conclusion</span>
+                            </button>
+                        </div>
+                        <div id="conclusion-text-container" class="hidden text-[10px] md:text-[11px] text-indigo-800 italic animate-fade-in bg-white p-2 rounded-lg border border-indigo-50 leading-relaxed shadow-sm"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Bloque de Ejercicios -->
+        <div class="bg-white p-3 md:p-4 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex items-center gap-2 font-bold text-base md:text-lg text-slate-800 border-b border-slate-100 pb-1.5 mb-2">
+                <i data-lucide="calculator" class="text-indigo-500 w-4 h-4 md:w-5 md:h-5"></i> Analysis and Exercises Block
+            </div>
+            
+            <div class="flex flex-col lg:flex-row gap-3 md:gap-4">
+                <div class="w-full lg:w-1/3 space-y-3">
+                    <!-- Generador Clásico -->
+                    <div class="space-y-2 pb-3 border-b border-slate-100">
+                        <p class="text-[11px] md:text-xs text-slate-600 leading-tight">
+                            Test what you have learned by solving classic problems.
+                        </p>
+                        <button id="btn-classic-exercise" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 px-3 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 text-xs md:text-sm">
+                            <i data-lucide="play-square" class="w-4 h-4"></i> Classic Problem
+                        </button>
+                    </div>
+
+                    <!-- Generador IA -->
+                    <div class="space-y-2">
+                        <h4 class="font-bold text-indigo-900 flex items-center gap-1.5 text-[11px] md:text-xs">
+                            <i data-lucide="sparkles" class="text-indigo-500 w-3.5 h-3.5"></i> Invent with Gemini
+                        </h4>
+                        <p class="text-[10px] md:text-[11px] text-slate-500 leading-tight">
+                            Choose a theme and the AI will create a unique, personalized challenge.
+                        </p>
+                        <select id="ai-theme" class="w-full p-1.5 border border-slate-300 rounded-lg text-[11px] md:text-xs bg-slate-50 focus:ring-1 focus:ring-indigo-500 outline-none">
+                            <option value="Hot air balloons">🎈 Hot air balloons</option>
+                            <option value="Bakery and yeast bubbles">🥖 Bakery and yeast bubbles</option>
+                            <option value="Tires in winter and summer">🚙 Tires in winter and summer</option>
+                            <option value="Liquid nitrogen experiments">🥶 Liquid nitrogen experiments</option>
+                        </select>
+                        <button id="btn-ai-exercise" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2 text-xs md:text-sm disabled:bg-indigo-400">
+                            <i data-lucide="sparkles" class="w-4 h-4" id="icon-ai-btn"></i>
+                            <span id="text-ai-btn">Generate with AI</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="w-full lg:w-2/3">
+                    <div id="exercise-panel" class="h-full">
+                        <div class="h-full flex items-center justify-center text-slate-400 italic border-2 border-dashed border-slate-200 rounded-xl p-4 text-center min-h-[120px] text-[11px] md:text-xs">
+                            Click on "Classic Problem" or "Generate with AI" to start.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Licencia y Contador de Visitas -->
+        <div class="text-center text-slate-500 text-[10px] sm:text-[11px] mt-2 pb-2">
+            <div class="flex justify-center mb-1">
+                <img src="https://visitor-badge.laobi.icu/badge?page_id=EAG1964.charles&left_text=Views&left_color=gray&right_color=orange" alt="Views" class="h-4">
+            </div>
+            <p>
+                Author: <strong>EAG1964</strong> | 2026 | 
+                <a href="https://EAG1964.github.io/" target="_blank" class="text-blue-600 hover:text-blue-800 font-bold transition-colors">Main Panel</a> | 
+                <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en" target="_blank" class="text-blue-600 hover:text-blue-800 font-bold transition-colors">CC BY-NC-SA 4.0 License</a>
+            </p>
+        </div>
+
+    </div>
+
+    <!-- MAIN SCRIPT -->
+    <script>
+        // --- CONSTANTES GLOBALES (CHARLES) ---
+        // V = k * T -> Si a 273K (0ºC) V es 5.0 L -> k = 5/273
+        const K_CHARLES = 5.0 / 273; 
+        const MIN_T_C = -273;
+        const MAX_T_C = 273; // 546 K -> Volumen Max 10L
+        const NUM_PARTICLES = 120;
+        const PARTICLE_RADIUS = 2.5;
+
+        // --- ESTADO GLOBAL ---
+        let tempC = 0;
+        let tempK = 273;
+        let volume = tempK * K_CHARLES; // 5.0L al inicio
+        let points = [];
+        let exerciseClassic = null;
+        let aiExerciseObj = null;
+
+        // --- REFERENCIAS DOM ---
+        const tempSlider = document.getElementById('temp-slider');
+        const tempDisplay = document.getElementById('temp-display');
+        const tempCDisplay = document.getElementById('temp-c-display');
+        const volDisplay = document.getElementById('vol-display');
+        
+        const graphSvg = document.getElementById('graph-svg');
+        const pointsTableBody = document.getElementById('points-table-body');
+        const btnRecord = document.getElementById('btn-record');
+        const btnClear = document.getElementById('btn-clear');
+        const clearBtnContainer = document.getElementById('clear-btn-container');
+
+        const aiConclusionContainer = document.getElementById('ai-conclusion-container');
+        const btnGenerateConclusion = document.getElementById('btn-generate-conclusion');
+        const conclusionTextContainer = document.getElementById('conclusion-text-container');
+        const iconConclusion = document.getElementById('icon-conclusion');
+        const textConclusionBtn = document.getElementById('text-conclusion-btn');
+
+        const btnClassicExercise = document.getElementById('btn-classic-exercise');
+        const btnAiExercise = document.getElementById('btn-ai-exercise');
+        const aiThemeSelect = document.getElementById('ai-theme');
+        const exercisePanel = document.getElementById('exercise-panel');
+        const iconAiBtn = document.getElementById('icon-ai-btn');
+        const textAiBtn = document.getElementById('text-ai-btn');
+
+        // Inicializar iconos
+        lucide.createIcons();
+
+        // --- MANEJADORES DE EVENTOS BÁSICOS ---
+        tempSlider.addEventListener('input', (e) => {
+            tempC = parseInt(e.target.value);
+            tempK = tempC + 273;
+            volume = tempK * K_CHARLES;
+            updateUI();
+        });
+
+        btnRecord.addEventListener('click', () => {
+            if (!points.some(p => Math.abs(p.T - tempK) < 1)) {
+                points.push({ T: tempK, V: volume });
+                points.sort((a, b) => a.T - b.T);
+                updateUI();
+            }
+        });
+
+        btnClear.addEventListener('click', () => {
+            points = [];
+            conclusionTextContainer.classList.add('hidden');
+            conclusionTextContainer.innerHTML = '';
+            updateUI();
+        });
+
+        // --- ACTUALIZACIÓN DE LA UI (Macroscópico y SVG) ---
+        function updateUI() {
+            tempDisplay.innerText = tempK;
+            tempCDisplay.innerText = tempC;
+            volDisplay.innerText = volume.toFixed(1);
+
+            renderTable();
+            renderGraph();
+
+            // Lógica visibilidad conclusión
+            if (points.length >= 2) {
+                aiConclusionContainer.classList.remove('hidden');
+            } else {
+                aiConclusionContainer.classList.add('hidden');
+            }
+
+            if (points.length > 0) {
+                clearBtnContainer.classList.remove('hidden');
+            } else {
+                clearBtnContainer.classList.add('hidden');
+            }
+        }
+
+        function renderTable() {
+            if (points.length === 0) {
+                pointsTableBody.innerHTML = '<tr><td colSpan="3" class="py-2 text-slate-400">No data</td></tr>';
+                return;
+            }
+            
+            pointsTableBody.innerHTML = points.map(pt => `
+                <tr class="border-b border-slate-200 last:border-0 hover:bg-slate-50">
+                    <td class="py-1 px-1 border-r border-slate-200">${pt.V.toFixed(1)}</td>
+                    <td class="py-1 px-1 border-r border-slate-200">${pt.T}</td>
+                    <td class="py-1 px-1 bg-yellow-50 font-bold text-yellow-800">${(pt.V / pt.T).toFixed(4)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderGraph() {
+            const width = 100;
+            const height = 100;
+            // Gráfica de 0K a 600K, Volumen de 0 a 12 L
+            const MAX_X = 600;
+            const MAX_Y = 12;
+
+            const mapX = (t) => (t / MAX_X) * width;
+            const mapY = (v) => height - ((v / MAX_Y) * height);
+
+            // Línea teórica desde el 0 de forma continua
+            let solidPath = `M ${mapX(0)} ${mapY(0)} L ${mapX(600)} ${mapY(600 * K_CHARLES)}`;
+
+            let gridHTML = `
+                <line x1="0" y1="-12" x2="0" y2="100" stroke="#000" stroke-width="1.5" stroke-linecap="square"/>
+                <line x1="0" y1="100" x2="112" y2="100" stroke="#000" stroke-width="1.5" stroke-linecap="square"/>
+            `;
+            let labelsHTML = `
+                <text x="108" y="110" font-size="8" font-weight="bold" fill="#0f172a" text-anchor="start"><tspan font-style="italic">T</tspan>(K)</text>
+                <text x="-4" y="-12" font-size="8" font-weight="bold" fill="#0f172a" text-anchor="end" dominant-baseline="central"><tspan font-style="italic">V</tspan>(L)</text>
+                <text x="-4" y="100" font-size="7" font-weight="bold" fill="#334155" text-anchor="end" dominant-baseline="central">0</text>
+            `;
+
+            // Marcas en Y (2.0, 4.0, 6.0, 8.0, 10.0, 12.0)
+            for(let i=2; i<=MAX_Y; i+=2) {
+                gridHTML += `<line x1="0" y1="${mapY(i)}" x2="100" y2="${mapY(i)}" stroke="#e2e8f0" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+                gridHTML += `<line x1="-1.5" y1="${mapY(i)}" x2="0" y2="${mapY(i)}" stroke="#000" stroke-width="1" />`;
+                labelsHTML += `<text x="-4" y="${mapY(i)}" font-size="6" font-weight="bold" fill="#334155" text-anchor="end" dominant-baseline="central">${i}</text>`;
+            }
+
+            // Marcas en X (100, 200, 300, 400, 500, 600)
+            for(let i=100; i<=MAX_X; i+=100) {
+                gridHTML += `<line x1="${mapX(i)}" y1="0" x2="${mapX(i)}" y2="100" stroke="#e2e8f0" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+                gridHTML += `<line x1="${mapX(i)}" y1="100" x2="${mapX(i)}" y2="101.5" stroke="#000" stroke-width="1" />`;
+                labelsHTML += `<text x="${mapX(i)}" y="110" font-size="6" font-weight="bold" fill="#334155" text-anchor="middle">${i}</text>`;
+            }
+
+            let pointsHTML = points.map(pt => `
+                <circle cx="${mapX(pt.T)}" cy="${mapY(pt.V)}" r="2.5" fill="#f97316" stroke="#fff" stroke-width="0.5">
+                    <title>T: ${pt.T}K, V: ${pt.V.toFixed(1)}L</title>
+                </circle>
+            `).join('');
+
+            const currentPointHTML = `
+                <circle cx="${mapX(tempK)}" cy="${mapY(volume)}" r="3" fill="#3b82f6" class="transition-all duration-75"></circle>
+                <circle cx="${mapX(tempK)}" cy="${mapY(volume)}" r="6" fill="none" stroke="#3b82f6" stroke-width="0.5" class="animate-ping" style="transform-origin: center"></circle>
+            `;
+
+            graphSvg.innerHTML = `
+                ${gridHTML}
+                <!-- Línea de la proporcionalidad teórica -->
+                <path d="${solidPath}" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                ${pointsHTML}
+                ${currentPointHTML}
+                ${labelsHTML}
+            `;
+        }
+
+        // --- LÓGICA DEL CANVAS (Microscópico) ---
+        const canvas = document.getElementById('gasCanvas');
+        const ctx = canvas.getContext('2d');
+        const C_WIDTH = canvas.width;
+        const C_HEIGHT = canvas.height;
+        
+        // Configuración de la "jeringuilla + calefactor"
+        const S_HEIGHT = 100;
+        const S_TOP = (C_HEIGHT - S_HEIGHT) / 2 - 10;
+        const S_BOTTOM = S_TOP + S_HEIGHT;
+        const LEFT_WALL = 50; 
+        
+        // 10L = 280px -> pxPerLiter = 28
+        const pxPerLiter = 28;
+        const MAX_VOLUME_WIDTH = 10 * pxPerLiter;
+
+        let particles = Array.from({ length: NUM_PARTICLES }).map(() => {
+            const angle = Math.random() * Math.PI * 2;
+            return {
+                x: LEFT_WALL + Math.random() * (5 * pxPerLiter - PARTICLE_RADIUS*2),
+                y: S_TOP + Math.random() * (S_HEIGHT - PARTICLE_RADIUS*2),
+                vx: Math.cos(angle),
+                vy: Math.sin(angle),
+                radius: PARTICLE_RADIUS
+            };
+        });
+
+        function renderCanvas(time) {
+            ctx.clearRect(0, 0, C_WIDTH, C_HEIGHT);
+            
+            // La velocidad base depende de la Temperatura (K). A 0K, velocidad = 0.
+            const SPEED = 0.6 * (tempK / 273); 
+            const RIGHT_WALL = LEFT_WALL + (volume * pxPerLiter);
+
+            // --- CALEFACTOR / REFRIGERADOR ---
+            let r = 50, g = 50, b = 50;
+            if (tempC > 0) {
+                r = Math.floor((tempC / 273) * 200) + 50;
+            } else if (tempC <= 0) {
+                b = Math.floor((Math.abs(tempC) / 273) * 200) + 50;
+                r = 50;
+            }
+            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            // El calefactor cubre todo el rango posible de la jeringuilla
+            ctx.fillRect(LEFT_WALL, S_BOTTOM + 5, MAX_VOLUME_WIDTH + 10, 10);
+            
+            // Resistencias
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(LEFT_WALL + 10, S_BOTTOM + 10); ctx.lineTo(LEFT_WALL + MAX_VOLUME_WIDTH, S_BOTTOM + 10);
+            ctx.stroke();
+
+            // --- JERINGUILLA FONDO ---
+            ctx.fillStyle = '#f0f9ff';
+            ctx.fillRect(LEFT_WALL, S_TOP, RIGHT_WALL - LEFT_WALL, S_HEIGHT);
+
+            // --- PARTÍCULAS ---
+            ctx.fillStyle = '#3b82f6';
+            
+            particles.forEach(p => {
+                p.x += p.vx * SPEED;
+                p.y += p.vy * SPEED;
+
+                let choca = false;
+
+                if (p.y - p.radius < S_TOP) { p.y = S_TOP + p.radius; p.vy *= -1; choca = true; } 
+                else if (p.y + p.radius > S_BOTTOM) { p.y = S_BOTTOM - p.radius; p.vy *= -1; choca = true; }
+
+                if (p.x - p.radius < LEFT_WALL) { p.x = LEFT_WALL + p.radius; p.vx *= -1; choca = true; } 
+                else if (p.x + p.radius > RIGHT_WALL) { 
+                    // Si el émbolo se ha movido más rápido que ellas, reajustamos posición
+                    p.x = RIGHT_WALL - p.radius; 
+                    p.vx *= -1; 
+                    choca = true; 
+                }
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                if (choca && tempK > 0) {
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 1 + (tempK / 150);
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius * 3, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            });
+
+            // --- JERINGUILLA BORDES ---
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#64748b';
+            ctx.beginPath();
+            ctx.moveTo(LEFT_WALL, S_TOP); ctx.lineTo(LEFT_WALL + MAX_VOLUME_WIDTH + 20, S_TOP);
+            ctx.moveTo(LEFT_WALL, S_BOTTOM); ctx.lineTo(LEFT_WALL + MAX_VOLUME_WIDTH + 20, S_BOTTOM);
+            ctx.moveTo(LEFT_WALL, S_TOP); ctx.lineTo(LEFT_WALL, S_BOTTOM);
+            ctx.stroke();
+
+            // --- ÉMBOLO MÓVIL ---
+            ctx.fillStyle = '#334155';
+            const PLUNGER_WIDTH = 15;
+            ctx.fillRect(RIGHT_WALL, S_TOP + 2, PLUNGER_WIDTH, S_HEIGHT - 4);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(RIGHT_WALL + PLUNGER_WIDTH, S_TOP + S_HEIGHT/2 - 5, C_WIDTH - RIGHT_WALL, 10);
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(C_WIDTH - 15, S_TOP + S_HEIGHT/2 - 25, 10, 50);
+
+            // --- TERMÓMETRO LATERAL ---
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillRect(10, S_TOP - 10, 10, S_HEIGHT + 10);
+            ctx.beginPath(); ctx.arc(15, S_BOTTOM + 5, 10, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(15, S_BOTTOM + 5, 7, 0, Math.PI * 2); ctx.fill();
+            const heightCol = Math.max(0, (tempK / 546) * (S_HEIGHT - 5));
+            ctx.fillRect(12, S_BOTTOM - 5 - heightCol, 6, heightCol + 5);
+
+            requestAnimationFrame(renderCanvas);
+        }
+        requestAnimationFrame(renderCanvas);
+
+        // --- API GEMINI HELPER ---
+        async function callGemini(prompt, useJson = false, schema = null) {
+            const apiKey = ""; 
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+            if (useJson && schema) {
+                payload.generationConfig = { responseMimeType: "application/json", responseSchema: schema };
+            }
+
+            let retries = 5;
+            let delay = 1000;
+            while (retries > 0) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const data = await response.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    return useJson ? JSON.parse(text) : text;
+                } catch (error) {
+                    retries--;
+                    if (retries === 0) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        // --- LÓGICA IA CONCLUSIÓN ---
+        btnGenerateConclusion.addEventListener('click', async () => {
+            if (points.length < 2) return;
+            
+            btnGenerateConclusion.disabled = true;
+            iconConclusion.setAttribute('data-lucide', 'loader-2');
+            iconConclusion.classList.add('animate-spin');
+            lucide.createIcons();
+            
+            try {
+                const prompt = `You are an enthusiastic physics teacher. An 8th-grade student has performed a virtual experiment on Charles' Law and recorded these experimental points of Temperature in Kelvin and Volume in L: ${JSON.stringify(points)}. Write a brief conclusion (maximum 4 lines) addressing the student, congratulating them on their work, noting that as temperature increases volume expands proportionally, and empirically confirming that V/T remains constant forming a line pointing to absolute zero. Make it motivating. Respond entirely in English.`;
+                const response = await callGemini(prompt);
+                
+                conclusionTextContainer.innerText = `"${response}"`;
+                conclusionTextContainer.classList.remove('hidden');
+            } catch (error) {
+                conclusionTextContainer.innerText = "There was an error generating the conclusion. Please try again.";
+                conclusionTextContainer.classList.remove('hidden');
+            } finally {
+                btnGenerateConclusion.disabled = false;
+                iconConclusion.setAttribute('data-lucide', 'sparkles');
+                iconConclusion.classList.remove('animate-spin');
+                lucide.createIcons();
+            }
+        });
+
+        // --- LÓGICA EJERCICIOS CLÁSICOS ---
+        btnClassicExercise.addEventListener('click', () => {
+            // Generar T1 entre 250K y 450K
+            let t1 = Math.floor(Math.random() * 200) + 250; 
+            // Generar V1 entre 2.0 y 8.0 L
+            let v1 = (Math.floor(Math.random() * 60) + 20) / 10; 
+            let t2;
+            do { t2 = Math.floor(Math.random() * 200) + 250; } while (t2 === t1);
+            let v2 = (v1 * t2) / t1;
+
+            const targets = ['V1', 'T1', 'V2', 'T2'];
+            const target = targets[Math.floor(Math.random() * targets.length)];
+
+            exerciseClassic = {
+                v1: v1.toFixed(2),
+                t1_k: t1,
+                t1_c: (t1 - 273),
+                v2: v2.toFixed(2),
+                t2_k: t2,
+                t2_c: (t2 - 273),
+                target: target
+            };
+
+            renderClassicExercise();
+        });
+
+        // --- LÓGICA IA EJERCICIOS ---
+        btnAiExercise.addEventListener('click', async () => {
+            const theme = aiThemeSelect.value;
+            
+            btnAiExercise.disabled = true;
+            iconAiBtn.setAttribute('data-lucide', 'loader-2');
+            iconAiBtn.classList.add('animate-spin');
+            textAiBtn.innerText = "Imagining...";
+            lucide.createIcons();
+
+            exercisePanel.innerHTML = `
+                <div class="h-full flex flex-col items-center justify-center text-indigo-400 italic border-2 border-dashed border-indigo-100 rounded-xl p-6 text-center min-h-[150px]">
+                    <i data-lucide="loader-2" class="w-8 h-8 animate-spin mb-4 text-indigo-500"></i>
+                    Gemini is writing a problem about "${theme}"...
+                </div>
+            `;
+            lucide.createIcons();
+
+            try {
+                const schema = {
+                    type: "OBJECT",
+                    properties: {
+                        enunciado: { type: "STRING" },
+                        solucion_pasos: { type: "ARRAY", items: { type: "STRING" } }
+                    },
+                    required: ["enunciado", "solucion_pasos"]
+                };
+                const prompt = `Generate an original math problem about Charles' Law for 8th-grade students (13-14 years old). The problem MUST be creatively set in this theme: "${theme}". Use realistic volume (L) and temperature values.
+                IMPORTANT: In the statement, provide the initial and final temperatures in degrees Celsius (ºC) so the student has to explicitly convert them to Kelvin by adding 273.
+                STRICT FORMAT RULES: 
+                1. The 'solucion_pasos' array MUST have EXACTLY 6 strings with these steps:
+                   - Step 1 (Identify data): List the given values and show the explicit conversion from ºC to Kelvin (e.g.: T1 = 20ºC + 273 = 293K).
+                   - Step 2 (Identify law): Mention that since pressure is constant, Charles' Law applies.
+                   - Step 3 (Write the equation): Write the formula using the fraction format below.
+                   - Step 4 (Solve for the variable): Show the formula solved for the unknown.
+                   - Step 5 (Substitute the data): Show the substitution with the numbers (in Kelvin).
+                   - Step 6 (Final result): Give the final numerical value with its unit.
+                2. Use HTML tags: volume uppercase italic "V" with subscript (<i>V₁</i>) and temperature uppercase italic "T" with subscript (<i>T₁</i>).
+                3. VERY IMPORTANT - FRACTIONS RULE: To write ANY fraction (in equations, solving, or substitutions), you MUST STRICTLY use this format: FRAC{numerator}{denominator}. DO NOT use the "/" symbol.
+                Example Step 3: FRAC{<i>V₁</i>}{<i>T₁</i>} = FRAC{<i>V₂</i>}{<i>T₂</i>}
+                Example Solving: <i>V₂</i> = FRAC{<i>V₁</i> · <i>T₂</i>}{<i>T₁</i>}
+                Return a JSON with 'enunciado' (statement) and 'solucion_pasos' (solution steps). Respond entirely in English.`;
+                
+                aiExerciseObj = await callGemini(prompt, true, schema);
+                renderAiExercise();
+            } catch (error) {
+                console.error(error);
+                exercisePanel.innerHTML = `<div class="p-4 text-red-500">Error contacting Gemini. Please try again.</div>`;
+            } finally {
+                btnAiExercise.disabled = false;
+                iconAiBtn.setAttribute('data-lucide', 'sparkles');
+                iconAiBtn.classList.remove('animate-spin');
+                textAiBtn.innerText = "Generate with AI";
+                lucide.createIcons();
+            }
+        });
+
+        function renderClassicExercise() {
+            const ex = exerciseClassic;
+            
+            let statement = "";
+            let targetVar = "";
+            let mult1, mult2, valDiv, resVal, resUnit;
+            let datosHtml = "";
+            let despejeHtml = "";
+
+            if (ex.target === 'V2') {
+                statement = `A gas enclosed at constant pressure occupies <b>${ex.v1} L</b> at <b>${ex.t1_c} ºC</b>. What volume will it occupy if the temperature changes to <b>${ex.t2_c} ºC</b>?`;
+                targetVar = '<i>V₂</i>';
+                mult1 = ex.v1; mult2 = ex.t2_k; valDiv = ex.t1_k;
+                resVal = ((mult1 * mult2) / valDiv).toFixed(2);
+                resUnit = 'L';
+                datosHtml = `<i>V₁</i> = ${ex.v1} L <br> <i>T₁</i> = ${ex.t1_c} ºC + 273 = <b>${ex.t1_k} K</b> <br> <i>T₂</i> = ${ex.t2_c} ºC + 273 = <b>${ex.t2_k} K</b> <br> <i>V₂</i> = ?`;
+                despejeHtml = `<span class="border-b border-slate-400 px-2 mb-0.5"><i>V₁</i> · <i>T₂</i></span><span><i>T₁</i></span>`;
+            } else if (ex.target === 'T2') {
+                statement = `A gas at constant pressure occupies <b>${ex.v1} L</b> at <b>${ex.t1_c} ºC</b>. To what temperature (in ºC) must it be heated or cooled so that its volume becomes <b>${ex.v2} L</b>?`;
+                targetVar = '<i>T₂</i>';
+                mult1 = ex.v2; mult2 = ex.t1_k; valDiv = ex.v1;
+                resVal = ((mult1 * mult2) / valDiv).toFixed(1);
+                resUnit = 'K';
+                datosHtml = `<i>V₁</i> = ${ex.v1} L <br> <i>T₁</i> = ${ex.t1_c} ºC + 273 = <b>${ex.t1_k} K</b> <br> <i>V₂</i> = ${ex.v2} L <br> <i>T₂</i> = ?`;
+                despejeHtml = `<span class="border-b border-slate-400 px-2 mb-0.5"><i>V₂</i> · <i>T₁</i></span><span><i>V₁</i></span>`;
+            } else if (ex.target === 'V1') {
+                statement = `After heating a gas at constant pressure to <b>${ex.t2_c} ºC</b>, it occupies a volume of <b>${ex.v2} L</b>. If it was initially at <b>${ex.t1_c} ºC</b>, what was its original volume?`;
+                targetVar = '<i>V₁</i>';
+                mult1 = ex.v2; mult2 = ex.t1_k; valDiv = ex.t2_k;
+                resVal = ((mult1 * mult2) / valDiv).toFixed(2);
+                resUnit = 'L';
+                datosHtml = `<i>T₁</i> = ${ex.t1_c} ºC + 273 = <b>${ex.t1_k} K</b> <br> <i>V₂</i> = ${ex.v2} L <br> <i>T₂</i> = ${ex.t2_c} ºC + 273 = <b>${ex.t2_k} K</b> <br> <i>V₁</i> = ?`;
+                despejeHtml = `<span class="border-b border-slate-400 px-2 mb-0.5"><i>V₂</i> · <i>T₁</i></span><span><i>T₂</i></span>`;
+            } else if (ex.target === 'T1') {
+                statement = `At constant pressure, a gas finally occupies <b>${ex.v2} L</b> at <b>${ex.t2_c} ºC</b>. If it initially occupied <b>${ex.v1} L</b>, what was its initial temperature (in ºC)?`;
+                targetVar = '<i>T₁</i>';
+                mult1 = ex.v1; mult2 = ex.t2_k; valDiv = ex.v2;
+                resVal = ((mult1 * mult2) / valDiv).toFixed(1);
+                resUnit = 'K';
+                datosHtml = `<i>V₁</i> = ${ex.v1} L <br> <i>V₂</i> = ${ex.v2} L <br> <i>T₂</i> = ${ex.t2_c} ºC + 273 = <b>${ex.t2_k} K</b> <br> <i>T₁</i> = ?`;
+                despejeHtml = `<span class="border-b border-slate-400 px-2 mb-0.5"><i>V₁</i> · <i>T₂</i></span><span><i>V₂</i></span>`;
+            }
+
+            let tFinalStr = "";
+            if (ex.target === 'T1' || ex.target === 'T2') {
+                const tempC = (parseFloat(resVal) - 273).toFixed(1);
+                tFinalStr = `<div class="mt-2 text-sm text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded inline-block shadow-sm">Converted to Celsius: ${resVal} K - 273 = <b class="text-orange-600">${tempC} ºC</b></div>`;
+            }
+
+            exercisePanel.innerHTML = `
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 relative">
+                    <h3 class="font-bold text-indigo-900 mb-2">Classic Statement:</h3>
+                    <p class="text-slate-800 leading-relaxed mb-4 text-sm md:text-base">
+                        ${statement}
+                    </p>
+                    
+                    <div id="classic-solution" class="hidden mt-4 border-t border-slate-200 pt-4 animate-fade-in">
+                        <ul class="list-none space-y-3 text-slate-700 text-sm" id="classic-steps-list">
+                            <li class="hidden step-item transition-opacity duration-300">
+                                <strong class="text-indigo-800">Step 1: Identify data and convert to Kelvin</strong> 
+                                <div class="mt-1 font-mono bg-white px-3 py-1.5 rounded border border-slate-200 inline-block shadow-sm">
+                                    ${datosHtml}
+                                </div>
+                            </li>
+                            <li class="hidden step-item transition-opacity duration-300">
+                                <strong class="text-indigo-800">Step 2: Identify the gas law</strong>
+                                <div class="mt-1 text-slate-600 bg-white px-3 py-1.5 rounded border border-slate-200 inline-block shadow-sm">
+                                    Since pressure is constant, we apply <b>Charles' Law</b>.
+                                </div>
+                            </li>
+                            <li class="hidden step-item transition-opacity duration-300">
+                                <strong class="text-indigo-800 block mb-2">Step 3: Write the equation</strong> 
+                                <div class="w-full flex justify-center mt-2">
+                                    <div class="font-mono bg-white px-4 py-2 rounded border border-slate-200 inline-flex items-center shadow-sm text-center text-base">
+                                        <div class="flex flex-col items-center leading-none">
+                                            <span class="border-b border-slate-400 px-1 mb-0.5"><i>V₁</i></span>
+                                            <span><i>T₁</i></span>
+                                        </div>
+                                        <span class="mx-3">=</span>
+                                        <div class="flex flex-col items-center leading-none">
+                                            <span class="border-b border-slate-400 px-1 mb-0.5"><i>V₂</i></span>
+                                            <span><i>T₂</i></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                            <li class="hidden step-item transition-opacity duration-300">
+                                <strong class="text-indigo-800 block mb-2">Step 4: Solve for the variable by cross-multiplying</strong>
+                                <div class="w-full flex justify-center mt-2">
+                                    <div class="inline-flex items-center bg-white px-4 py-2 rounded border border-slate-200 shadow-sm text-base">
+                                        <span class="font-mono mr-2">${targetVar} = </span>
+                                        <div class="flex flex-col items-center font-mono leading-none">
+                                            ${despejeHtml}
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                            <li class="hidden step-item transition-opacity duration-300">
+                                <strong class="text-indigo-800 block mb-2">Step 5: Substitute the data</strong>
+                                <div class="w-full flex justify-center mt-2">
+                                    <div class="inline-flex items-center bg-white px-4 py-2 rounded border border-slate-200 shadow-sm text-base">
+                                        <span class="font-mono mr-2">${targetVar} = </span>
+                                        <div class="flex flex-col items-center font-mono leading-none">
+                                            <span class="border-b border-slate-400 px-2 mb-0.5">${mult1} · ${mult2}</span>
+                                            <span>${valDiv}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                            <li class="hidden step-item transition-opacity duration-300">
+                                <strong class="text-indigo-800 block mb-2">Step 6: Final result</strong> 
+                                <div class="w-full flex flex-col items-center mt-2">
+                                    <span class="font-bold text-xl text-emerald-700 bg-emerald-50 px-5 py-2 rounded border border-emerald-200 inline-block shadow-sm">
+                                        ${targetVar} = ${resVal} ${resUnit}
+                                    </span>
+                                    ${tFinalStr}
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <button id="btn-show-classic-sol" class="mt-4 text-white font-bold bg-indigo-600 hover:bg-indigo-700 flex items-center text-sm px-4 py-2.5 rounded-lg shadow-sm transition-colors">
+                        <span id="text-classic-btn">Step 1: Identify data</span> <i data-lucide="chevron-right" class="w-4 h-4 ml-1"></i>
+                    </button>
+                </div>
+            `;
+            lucide.createIcons();
+
+            let currentStep = 0;
+            const btn = document.getElementById('btn-show-classic-sol');
+            const btnText = document.getElementById('text-classic-btn');
+            const solDiv = document.getElementById('classic-solution');
+            const steps = document.querySelectorAll('.step-item');
+            
+            const buttonTexts = [
+                "Step 1: Identify data",
+                "Step 2: Identify the gas law",
+                "Step 3: Write the equation",
+                "Step 4: Solve for the variable",
+                "Step 5: Substitute the data",
+                "Step 6: Final result"
+            ];
+            
+            btnText.innerText = buttonTexts[0];
+
+            btn.addEventListener('click', () => {
+                if (currentStep === 0) solDiv.classList.remove('hidden');
+                if (currentStep < steps.length) {
+                    steps[currentStep].classList.remove('hidden');
+                    currentStep++;
+                }
+                if (currentStep < steps.length) {
+                    btnText.innerText = buttonTexts[currentStep];
+                } else {
+                    btn.classList.add('hidden');
+                }
+            });
+        }
+
+        function renderAiExercise() {
+            const ex = aiExerciseObj;
+            const titles = [
+                "Identify data",
+                "Identify the gas law",
+                "Write the equation",
+                "Solve for the variable",
+                "Substitute the data",
+                "Final result"
+            ];
+
+            let pasosHtml = ex.solucion_pasos.map((paso, index) => {
+                const title = titles[index] || `Additional step`;
+                const cleanPaso = paso.replace(/^(Step \d+[:\-\.]?\s*)/i, '').replace(/^(Paso \d+[:\-\.]?\s*)/i, '');
+                
+                // Procesar la etiqueta especial FRAC{num}{den} enviada por la IA
+                const formatPaso = cleanPaso.replace(/FRAC\{(.*?)\}\{(.*?)\}/g, '<div class="inline-flex flex-col items-center leading-none mx-2"><span class="border-b border-slate-400 px-1 mb-0.5">$1</span><span>$2</span></div>');
+                
+                // Determinar si centramos este paso (del 3 al 6) para que se vea más limpio
+                const isCentered = index >= 2;
+                
+                return `<li class="hidden step-item-ai transition-opacity duration-300 mb-4">
+                    <strong class="text-indigo-800 ${isCentered ? 'block mb-2' : ''}">Step ${index + 1}: ${title}</strong> 
+                    <div class="${isCentered ? 'w-full flex justify-center mt-2' : 'mt-1'}">
+                        <div class="font-mono text-slate-700 bg-white ${isCentered ? 'px-4 py-2 text-base' : 'px-3 py-1.5'} rounded border border-slate-200 inline-flex items-center flex-wrap shadow-sm">
+                            ${formatPaso}
+                        </div>
+                    </div>
+                </li>`;
+            }).join('');
+
+            exercisePanel.innerHTML = `
+                <div class="bg-indigo-50 p-5 rounded-xl border border-indigo-200 relative shadow-inner">
+                    <div class="absolute top-0 right-0 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-xl flex items-center gap-1">
+                        <i data-lucide="sparkles" class="w-3 h-3"></i> Gemini AI
+                    </div>
+                    <h3 class="font-bold text-indigo-900 mb-2 mt-2">Thematic Statement:</h3>
+                    <p class="text-slate-800 leading-relaxed mb-4 text-sm md:text-base">
+                        ${ex.enunciado}
+                    </p>
+                    
+                    <div id="ai-solution" class="hidden mt-4 border-t border-indigo-200 pt-4 animate-fade-in">
+                        <ul class="list-none space-y-3 text-sm" id="ai-steps-list">
+                            ${pasosHtml}
+                        </ul>
+                    </div>
+
+                    <button id="btn-show-ai-sol" class="mt-4 text-white font-bold bg-indigo-600 hover:bg-indigo-700 flex items-center text-sm px-4 py-2.5 rounded-lg shadow-sm transition-colors">
+                        <span id="text-ai-step-btn">Step 1: Identify data</span> <i data-lucide="chevron-right" class="w-4 h-4 ml-1"></i>
+                    </button>
+                </div>
+            `;
+            lucide.createIcons();
+
+            let currentStep = 0;
+            const btn = document.getElementById('btn-show-ai-sol');
+            const btnText = document.getElementById('text-ai-step-btn');
+            const solDiv = document.getElementById('ai-solution');
+            const steps = document.querySelectorAll('.step-item-ai');
+
+            const buttonTexts = [
+                "Step 1: Identify data",
+                "Step 2: Identify the gas law",
+                "Step 3: Write the equation",
+                "Step 4: Solve for the variable",
+                "Step 5: Substitute the data",
+                "Step 6: Final result"
+            ];
+
+            btnText.innerText = buttonTexts[0];
+
+            btn.addEventListener('click', () => {
+                if (currentStep === 0) solDiv.classList.remove('hidden');
+                if (currentStep < steps.length) {
+                    steps[currentStep].classList.remove('hidden');
+                    currentStep++;
+                }
+                if (currentStep < steps.length) {
+                    btnText.innerText = buttonTexts[currentStep] || `Step ${currentStep + 1}`;
+                } else {
+                    btn.classList.add('hidden');
+                }
+            });
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>
